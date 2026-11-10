@@ -1,0 +1,568 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="制作ルーティン">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<title>制作ルーティン</title>
+<style>
+  :root {
+    color-scheme: light;
+    --paper: #eef1ee;
+    --paper-raised: #ffffff;
+    --ink: #20242a;
+    --ink-soft: #565c66;
+    --line: #cdd3cd;
+    --accent: #3f7d52;
+    --accent-deep: #2d5c3c;
+    --warn: #b23b3b;
+    --font-body: -apple-system, BlinkMacSystemFont, "Hiragino Sans", sans-serif;
+    --font-mono: ui-monospace, "SFMono-Regular", monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #191c20;
+      --paper-raised: #22262b;
+      --ink: #e9e7e0;
+      --ink-soft: #a4aaa6;
+      --line: #383d3c;
+      --accent: #7ec98f;
+      --accent-deep: #a3dbb0;
+      --warn: #e08079;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    padding: calc(env(safe-area-inset-top) + 1.2rem) 1rem calc(env(safe-area-inset-bottom) + 2rem);
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 0.2rem; }
+  .sub { color: var(--ink-soft); font-size: 0.82rem; margin: 0 0 1rem; }
+  .card {
+    background: var(--paper-raised);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--accent);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    margin-bottom: 1rem;
+  }
+  .card h2 { font-size: 1rem; margin: 0 0 0.5rem; }
+  .card-sub { font-size: 0.82rem; color: var(--ink-soft); margin: 0 0 0.7rem; }
+  table.tasks { width: 100%; border-collapse: collapse; }
+  table.tasks td { padding: 0.5rem 0.2rem; border-bottom: 1px solid var(--line); font-size: 0.93rem; vertical-align: middle; }
+  table.tasks tr:last-child td { border-bottom: none; }
+  td.chk { width: 1.7rem; }
+  td.dur { width: 3.6rem; text-align: right; font-family: var(--font-mono); font-size: 0.78rem; color: var(--ink-soft); white-space: nowrap; }
+  label.tasklabel { display: flex; align-items: center; gap: 0.6rem; cursor: pointer; }
+  input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    width: 1.3rem; height: 1.3rem;
+    border: 1.5px solid var(--ink-soft); border-radius: 4px;
+    background: transparent; position: relative; cursor: pointer; flex: none;
+  }
+  input[type="checkbox"]:checked { background: var(--accent); border-color: var(--accent); }
+  input[type="checkbox"]:checked::after {
+    content: ""; position: absolute; left: 0.34rem; top: 0.1rem;
+    width: 0.36rem; height: 0.66rem; border: solid var(--paper-raised);
+    border-width: 0 2px 2px 0; transform: rotate(40deg);
+  }
+  label:has(input:checked) .tx { color: var(--ink-soft); text-decoration: line-through; }
+  .note { font-size: 0.8rem; color: var(--ink-soft); margin-top: 0.6rem; }
+  .btn {
+    font-family: var(--font-body); font-size: 0.88rem; font-weight: 500;
+    color: var(--ink); background: var(--paper-raised); border: 1px solid var(--accent);
+    border-radius: 6px; padding: 0.55rem 0.9rem; cursor: pointer; margin-top: 0.5rem;
+  }
+  .btn:active { background: var(--accent); color: var(--paper-raised); }
+  .btn-sub { border-color: var(--line); }
+  textarea, input[type="text"] {
+    width: 100%; font-family: var(--font-body); font-size: 0.95rem; color: var(--ink);
+    background: var(--paper); border: 1px solid var(--line); border-radius: 6px;
+    padding: 0.6rem; margin-top: 0.4rem;
+  }
+  textarea { resize: vertical; min-height: 3rem; }
+  .cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 0.6rem; }
+  .cal-day {
+    aspect-ratio: 1; border-radius: 4px; background: var(--paper);
+    border: 1px solid var(--line); font-size: 0.65rem; color: var(--ink-soft);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cal-day.done { background: var(--accent); color: var(--paper-raised); border-color: var(--accent); }
+  .cal-day.today { outline: 2px solid var(--accent-deep); outline-offset: 1px; }
+  .link-out { font-size: 0.85rem; }
+  .link-out a { color: var(--accent-deep); }
+  .roadmap-item { font-size: 0.86rem; padding: 0.3rem 0; border-bottom: 1px solid var(--line); }
+  .roadmap-item:last-child { border-bottom: none; }
+  .roadmap-label { font-weight: 600; font-size: 0.85rem; color: var(--accent-deep); margin: 0.8rem 0 0.3rem; }
+  .roadmap-label:first-child { margin-top: 0; }
+  details > summary { cursor: pointer; font-weight: 500; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: " ▾"; color: var(--ink-soft); }
+  details[open] > summary::after { content: " ▴"; }
+  .rest-day { text-align: center; padding: 2rem 1rem; color: var(--ink-soft); }
+  footer { text-align: center; font-size: 0.7rem; color: var(--ink-soft); margin-top: 1.5rem; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>制作ルーティン</h1>
+  <p class="sub" id="today-label"></p>
+  <div id="day-override" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.8rem;"></div>
+</header>
+
+<div class="card">
+  <h2>今日の曲</h2>
+  <p class="card-sub" id="song-list-count"></p>
+  <div id="today-song-display"></div>
+  <button class="btn" id="next-song-btn" hidden>この曲を使い終わった → 次へ</button>
+  <button class="btn btn-sub" id="retire-song-btn" hidden>この曲を卒業(削除)</button>
+  <details style="margin-top:0.8rem;">
+    <summary>リストを月1回まとめて入れ直す</summary>
+    <p class="card-sub">career-planに今月分をもらい、まるごと貼り付けて読み込む(1行1曲、<code>曲名||見出し①||見出し②||見出し③</code>の形式)。読み込むと今のリストは全部入れ替わる。</p>
+    <textarea id="song-list-paste" placeholder="長い間 / Kiroro||長い間 / Kiroro||ずっと待っててくれた人がいる人の長い間||大切な人に会いに行く電車で聴く長い間" style="min-height:6rem;"></textarea>
+    <button class="btn btn-sub" id="song-list-load-btn">読み込む(全部入れ替え)</button>
+  </details>
+  <details style="margin-top:0.6rem;">
+    <summary>卒業(削除)した曲 <span id="archive-count"></span></summary>
+    <div id="archive-list" style="margin-top:0.5rem;"></div>
+  </details>
+</div>
+
+<div class="card" id="rest-day-card" hidden>
+  <div class="rest-day">水曜は完全オフです。今日はここに何も出てきません。</div>
+</div>
+
+<div class="card" id="task-card" hidden>
+  <h2 id="task-title"></h2>
+  <p class="card-sub" id="task-sub"></p>
+  <table class="tasks" id="task-table"></table>
+  <p class="note" id="task-note"></p>
+</div>
+
+<div class="card">
+  <h2>記録</h2>
+  <p class="card-sub">今日やったこと・気づきを一言(無くてもOK)。チェックを1つでも入れた日は下のカレンダーに積み上がります。</p>
+  <textarea id="note-input" placeholder="任意メモ"></textarea>
+  <button class="btn" id="save-note-btn">記録する</button>
+  <div class="cal" id="calendar"></div>
+</div>
+
+<div class="card">
+  <details>
+    <summary><h2 style="display:inline">道のり(2年計画の全体像)</h2></summary>
+    <div id="roadmap" style="margin-top:0.6rem;"></div>
+  </details>
+</div>
+
+<div class="card">
+  <h2>今週分をリセット</h2>
+  <p class="card-sub">チェックは月曜に自動でリセットされます。週の途中で今すぐリセットしたい場合はこちら。</p>
+  <button class="btn btn-sub" id="reset-week-btn">今週分のチェックをリセット</button>
+</div>
+
+<footer>UTAU PRODUCTION APP — v1</footer>
+
+<script>
+(function () {
+  var STORE_KEY = 'utau-app-v1';
+
+  var TASKS = {
+    weekday: {
+      title: '月・火・木・金のタスク',
+      sub: '新曲録音(10:00–13:00) ＋ 日次編集・投稿 ＋ スキル投資。起床3時間後(10:00)まではボーカル作業不可。',
+      items: [
+        { id: 'e0', label: '他アーティストの楽曲研究/耳コピ', dur: '30分' },
+        { id: 'e1', label: '楽理・DAW操作の学習', dur: '30分' },
+        { id: 'e2', label: '音感・リズムトレーニング', dur: '30分' },
+        { id: 'd0', label: '発声ウォームアップ', dur: '30分' },
+        { id: 'c0', label: '編曲チェック(原曲に忠実な範囲か確認)', dur: '—' },
+        { id: 'c1', label: 'サビ録音(3回まで)', dur: '45分' },
+        { id: 'd1', label: 'キュー先頭の曲を確認し未使用マスを選ぶ(Artifact)', dur: '5分' },
+        { id: 'd2', label: 'TikTok分(ミックス・動画編集・キャプション・投稿)', dur: '80分' }
+      ],
+      note: '実質の録音日は月12〜13日。新曲録音は月5〜8日分、残りは既存候補の撮り直し(録音練習兼)。'
+    },
+    sat: {
+      title: '土曜のタスク(7:00–13:00)',
+      sub: '起床3時間後(10:00)まではボーカル作業不可のため非ボーカルを先に。',
+      items: [
+        { id: 'f1', label: 'スキル投資(耳コピ・楽理・リズム)', dur: '90分' },
+        { id: 'f2', label: '作曲練習(スキル投資扱い)', dur: '90分' },
+        { id: 'f0', label: '静かな歌練(候補リストから)', dur: '60分' }
+      ],
+      note: '13:00以降は完全フリー。'
+    },
+    sun: {
+      title: '日曜のタスク(7:00–17:30)',
+      sub: '起床3時間後(10:00)まではボーカル作業不可のため非ボーカルを先に。',
+      items: [
+        { id: 'g0', label: 'YouTube/Instagram用の追加調整(週分まとめて)', dur: '240分' },
+        { id: 'g2', label: '週次OODAレビュー(再生数確認→優先順位・見切り判断)', dur: '30分' },
+        { id: 'g1', label: '静かな歌練(候補リストから)', dur: '60分' },
+        { id: 'g3', label: 'スキル投資(耳コピ・楽理・リズム)', dur: '90分' }
+      ],
+      note: '新曲の追加は月次(Artifact)で行うため、ここでは既存キュー内の判断のみ。'
+    }
+  };
+
+  var ROADMAP = [
+    { phase: 'Phase 1(1〜6ヶ月目) — 土台構築', items: [
+      '機材整備(完了済み)・TikTok不振の原因分析',
+      'コンテンツ生成体制の確立(選曲A/Bパターン・フック演出・プラットフォーム別運用)',
+      'オリジナル曲のリリースは「カバーが軌道に乗ってから」(締切なし)',
+      'EPK雛形づくり(月1回時間確保、締切なし)',
+      'TikTokフォロワー80人到達でトーク配信の準備開始、100人到達で配信解禁'
+    ]},
+    { phase: 'Phase 2(7〜12ヶ月目) — 実績の積み上げ', items: [
+      '毎月リリースサイクルの確立(ボトルネックは撮影・編集キャパシティ側)',
+      'A&R直接コンタクト・オーディション応募(低頻度だが本気で挑む方針)',
+      'YouTube Shorts資産の蓄積(独立系アーティストとしての収益基盤)'
+    ]},
+    { phase: 'Phase 3(13〜18ヶ月目)', items: [
+      '大手各社の年次オーディションも本気で挑む(年1〜2回程度)',
+      'EPKのアップデートを継続',
+      'ワンマンミニライブ(独立アーティストとしての集客・収益イベント)'
+    ]},
+    { phase: 'Phase 4(19〜24ヶ月目)', items: [
+      '月収40万円ラインに近づいているか評価し、独立するかの判断材料にする',
+      '事務所から声かけがあれば、収益条件・創作の裁量・独立可能な収益水準を基準に前向きに検討',
+      '成果が出ない場合は路線見直し'
+    ]}
+  ];
+
+  function todayISO() { return new Date().toISOString().slice(0, 10); }
+
+  function mondayOf(d) {
+    var day = d.getDay();
+    var diff = (day === 0 ? -6 : 1 - day);
+    var m = new Date(d);
+    m.setDate(d.getDate() + diff);
+    m.setHours(0, 0, 0, 0);
+    return m.toISOString().slice(0, 10);
+  }
+
+  function defaultState() {
+    return { weekKey: mondayOf(new Date()), checks: {}, notes: [], doneDays: {}, songList: [], archivedList: [] };
+  }
+
+  function normalize(raw) {
+    var s = defaultState();
+    if (raw && typeof raw === 'object') {
+      if (typeof raw.weekKey === 'string') s.weekKey = raw.weekKey;
+      if (raw.checks && typeof raw.checks === 'object') s.checks = raw.checks;
+      if (Array.isArray(raw.notes)) s.notes = raw.notes;
+      if (raw.doneDays && typeof raw.doneDays === 'object') s.doneDays = raw.doneDays;
+      if (Array.isArray(raw.songList)) s.songList = raw.songList;
+      if (Array.isArray(raw.archivedList)) s.archivedList = raw.archivedList;
+    }
+    return s;
+  }
+
+  function load() {
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) return normalize(JSON.parse(raw));
+    } catch (e) {}
+    return defaultState();
+  }
+
+  function save() {
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(state)); } catch (e) {}
+  }
+
+  var state = load();
+
+  function resetIfNewWeek() {
+    var currentMonday = mondayOf(new Date());
+    if (state.weekKey !== currentMonday) {
+      state.weekKey = currentMonday;
+      state.checks = {};
+    }
+  }
+  resetIfNewWeek();
+  save();
+
+  var overrideDay = null; // null = use real date; 0-6 = preview that weekday instead
+
+  function dayType() {
+    var day = (overrideDay !== null) ? overrideDay : new Date().getDay(); // 0 sun .. 6 sat
+    if (day === 3) return 'rest';
+    if (day === 6) return 'sat';
+    if (day === 0) return 'sun';
+    return 'weekday';
+  }
+
+  var WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
+
+  function renderDayOverrideButtons() {
+    var wrap = document.getElementById('day-override');
+    wrap.innerHTML = '';
+    var realLabel = document.createElement('span');
+    realLabel.style.fontSize = '0.7rem';
+    realLabel.style.color = 'var(--ink-soft)';
+    realLabel.style.alignSelf = 'center';
+    realLabel.textContent = 'プレビュー:';
+    wrap.appendChild(realLabel);
+    WEEKDAY_LABELS.forEach(function (label, idx) {
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = label;
+      var isActive = (overrideDay === null ? new Date().getDay() : overrideDay) === idx;
+      btn.style.cssText = 'font-size:0.75rem;padding:0.3rem 0.55rem;border-radius:5px;border:1px solid var(--line);background:' +
+        (isActive ? 'var(--accent)' : 'var(--paper-raised)') + ';color:' + (isActive ? 'var(--paper-raised)' : 'var(--ink)') + ';cursor:pointer;';
+      btn.addEventListener('click', function () {
+        overrideDay = (idx === new Date().getDay()) ? null : idx;
+        renderDayOverrideButtons();
+        renderToday();
+      });
+      wrap.appendChild(btn);
+    });
+  }
+
+  function renderToday() {
+    var now = new Date();
+    var labelDay = (overrideDay !== null) ? overrideDay : now.getDay();
+    document.getElementById('today-label').textContent =
+      now.getFullYear() + '年' + (now.getMonth() + 1) + '月' + now.getDate() + '日(' + WEEKDAY_LABELS[labelDay] + ')' +
+      (overrideDay !== null ? ' ※プレビュー表示中、実際の今日ではありません' : '');
+
+    var type = dayType();
+    document.getElementById('rest-day-card').hidden = (type !== 'rest');
+    var taskCard = document.getElementById('task-card');
+    taskCard.hidden = (type === 'rest');
+    if (type === 'rest') return;
+
+    var def = TASKS[type];
+    document.getElementById('task-title').textContent = def.title;
+    document.getElementById('task-sub').textContent = def.sub;
+    document.getElementById('task-note').textContent = def.note;
+
+    var table = document.getElementById('task-table');
+    table.innerHTML = '';
+    def.items.forEach(function (item) {
+      var tr = document.createElement('tr');
+
+      var tdChk = document.createElement('td');
+      tdChk.className = 'chk';
+      var cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.id = item.id;
+      cb.checked = !!state.checks[item.id];
+      cb.addEventListener('change', function () {
+        state.checks[item.id] = cb.checked;
+        if (cb.checked) state.doneDays[todayISO()] = true;
+        save();
+        renderCalendar();
+      });
+      tdChk.appendChild(cb);
+      tr.appendChild(tdChk);
+
+      var tdLabel = document.createElement('td');
+      var label = document.createElement('label');
+      label.className = 'tasklabel';
+      label.htmlFor = item.id;
+      var span = document.createElement('span');
+      span.className = 'tx';
+      span.textContent = item.label;
+      label.appendChild(span);
+      tdLabel.appendChild(label);
+      tr.appendChild(tdLabel);
+
+      var tdDur = document.createElement('td');
+      tdDur.className = 'dur';
+      tdDur.textContent = item.dur;
+      tr.appendChild(tdDur);
+
+      table.appendChild(tr);
+    });
+  }
+
+  function renderCalendar() {
+    var cal = document.getElementById('calendar');
+    cal.innerHTML = '';
+    var today = new Date();
+    var days = [];
+    for (var i = 34; i >= 0; i--) {
+      var d = new Date(today);
+      d.setDate(today.getDate() - i);
+      days.push(d);
+    }
+    days.forEach(function (d) {
+      var iso = d.toISOString().slice(0, 10);
+      var cell = document.createElement('div');
+      cell.className = 'cal-day';
+      if (state.doneDays[iso]) cell.className += ' done';
+      if (iso === todayISO()) cell.className += ' today';
+      cell.textContent = d.getDate();
+      cal.appendChild(cell);
+    });
+  }
+
+  function renderRoadmap() {
+    var el = document.getElementById('roadmap');
+    el.innerHTML = '';
+    ROADMAP.forEach(function (block) {
+      var label = document.createElement('div');
+      label.className = 'roadmap-label';
+      label.textContent = block.phase;
+      el.appendChild(label);
+      block.items.forEach(function (text) {
+        var item = document.createElement('div');
+        item.className = 'roadmap-item';
+        item.textContent = text;
+        el.appendChild(item);
+      });
+    });
+  }
+
+  document.getElementById('save-note-btn').addEventListener('click', function () {
+    var input = document.getElementById('note-input');
+    var text = input.value.trim();
+    state.doneDays[todayISO()] = true;
+    if (text) {
+      state.notes.push({ date: todayISO(), text: text });
+    }
+    save();
+    input.value = '';
+    renderCalendar();
+  });
+
+  document.getElementById('reset-week-btn').addEventListener('click', function () {
+    state.checks = {};
+    state.weekKey = mondayOf(new Date());
+    save();
+    renderToday();
+  });
+
+  function renderSongList() {
+    var countEl = document.getElementById('song-list-count');
+    var display = document.getElementById('today-song-display');
+    var nextBtn = document.getElementById('next-song-btn');
+    var retireBtn = document.getElementById('retire-song-btn');
+    retireBtn.textContent = 'この曲を卒業(削除)';
+    retireBtn.dataset.armed = '';
+    display.innerHTML = '';
+
+    if (state.songList.length === 0) {
+      countEl.textContent = 'リストが空です。下の「リストを月1回まとめて入れ直す」から読み込んでください。';
+      nextBtn.hidden = true;
+      retireBtn.hidden = true;
+      return;
+    }
+
+    countEl.textContent = '残り' + state.songList.length + '曲';
+    var song = state.songList[0];
+
+    var name = document.createElement('div');
+    name.style.fontWeight = '600';
+    name.style.fontSize = '1.05rem';
+    name.style.marginBottom = '0.5rem';
+    name.textContent = song.name;
+    display.appendChild(name);
+
+    ['1', '2', '3'].forEach(function (slot) {
+      var labels = { '1': '①曲名だけ', '2': '②人物ラベル', '3': '③時間・場面' };
+      var text = (song.headlines && song.headlines[slot]) || '';
+      if (!text) return;
+      var row = document.createElement('div');
+      row.style.fontSize = '0.85rem';
+      row.style.marginBottom = '0.3rem';
+      row.innerHTML = '<span style="color:var(--ink-soft);">' + labels[slot] + ':</span> ' + text;
+      display.appendChild(row);
+    });
+
+    nextBtn.hidden = false;
+    retireBtn.hidden = false;
+  }
+
+  function renderArchiveList() {
+    document.getElementById('archive-count').textContent = state.archivedList.length ? '(' + state.archivedList.length + ')' : '';
+    var el = document.getElementById('archive-list');
+    el.innerHTML = '';
+    if (state.archivedList.length === 0) {
+      el.textContent = 'まだありません。';
+      return;
+    }
+    state.archivedList.slice().reverse().forEach(function (song) {
+      var row = document.createElement('div');
+      row.style.cssText = 'display:flex;align-items:center;gap:0.5rem;padding:0.4rem 0;border-bottom:1px solid var(--line);';
+      var name = document.createElement('span');
+      name.style.flex = '1';
+      name.style.fontSize = '0.88rem';
+      name.textContent = song.name;
+      row.appendChild(name);
+      var restoreBtn = document.createElement('button');
+      restoreBtn.type = 'button';
+      restoreBtn.className = 'btn btn-sub';
+      restoreBtn.style.margin = '0';
+      restoreBtn.textContent = '戻す';
+      restoreBtn.addEventListener('click', function () {
+        state.archivedList = state.archivedList.filter(function (s) { return s !== song; });
+        state.songList.push(song);
+        save();
+        renderSongList();
+        renderArchiveList();
+      });
+      row.appendChild(restoreBtn);
+      el.appendChild(row);
+    });
+  }
+
+  document.getElementById('retire-song-btn').addEventListener('click', function () {
+    var btn = this;
+    if (btn.dataset.armed === '1') {
+      var removed = state.songList.shift();
+      if (removed) state.archivedList.push(removed);
+      save();
+      renderSongList();
+      renderArchiveList();
+    } else {
+      btn.dataset.armed = '1';
+      btn.textContent = '本当に削除する(もう一度押す)';
+    }
+  });
+
+  document.getElementById('next-song-btn').addEventListener('click', function () {
+    var used = state.songList.shift();
+    if (used) state.songList.push(used);
+    save();
+    renderSongList();
+  });
+
+  document.getElementById('song-list-load-btn').addEventListener('click', function () {
+    var raw = document.getElementById('song-list-paste').value;
+    var lines = raw.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
+    var parsed = lines.map(function (line) {
+      var parts = line.split('||');
+      return {
+        name: (parts[0] || '').trim(),
+        headlines: { '1': (parts[1] || '').trim(), '2': (parts[2] || '').trim(), '3': (parts[3] || '').trim() }
+      };
+    }).filter(function (s) { return s.name; });
+    state.songList = parsed;
+    save();
+    document.getElementById('song-list-paste').value = '';
+    renderSongList();
+  });
+
+  renderSongList();
+  renderArchiveList();
+
+  renderDayOverrideButtons();
+  renderToday();
+  renderCalendar();
+  renderRoadmap();
+})();
+</script>
+</body>
+</html>
