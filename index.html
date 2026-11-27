@@ -139,6 +139,7 @@
     <p class="card-sub">career-planに検証①対象の曲名をもらい、まるごと貼り付けて読み込む(1行1曲)。読み込むと今のリストは全部入れ替わる。</p>
     <textarea id="song-list-paste" placeholder="長い間 / Kiroro&#10;ロビンソン / スピッツ" style="min-height:6rem;"></textarea>
     <button class="btn btn-sub" id="song-list-load-btn">読み込む(全部入れ替え)</button>
+    <button class="btn btn-sub" id="song-list-undo-btn" hidden>直前の入れ替えを元に戻す</button>
   </details>
   <details style="margin-top:0.6rem;">
     <summary>卒業(削除)した曲 <span id="archive-count"></span></summary>
@@ -165,6 +166,7 @@
     <p class="card-sub">career-planに検証②対象(クールダウン済み、または①を経由しない新曲)の曲名をもらい、まるごと貼り付けて読み込む(1行1曲)。読み込むと今のリストは全部入れ替わる。</p>
     <textarea id="song-list-paste-2" placeholder="長い間 / Kiroro&#10;ロビンソン / スピッツ" style="min-height:6rem;"></textarea>
     <button class="btn btn-sub" id="song-list-load-btn-2">読み込む(全部入れ替え)</button>
+    <button class="btn btn-sub" id="song-list-undo-btn-2" hidden>直前の入れ替えを元に戻す</button>
   </details>
   <details style="margin-top:0.6rem;">
     <summary>卒業(削除)した曲 <span id="archive-count-2"></span></summary>
@@ -311,8 +313,8 @@
   function defaultState() {
     return {
       weekKey: mondayOf(new Date()), checks: {}, notes: [], doneDays: {},
-      songList: [], archivedList: [], verify1RotationIndex: 0,
-      verify2List: [], verify2ArchivedList: [], verify2RotationIndex: 0
+      songList: [], archivedList: [], verify1RotationIndex: 0, songListBackup: null,
+      verify2List: [], verify2ArchivedList: [], verify2RotationIndex: 0, verify2ListBackup: null
     };
   }
 
@@ -326,9 +328,11 @@
       if (Array.isArray(raw.songList)) s.songList = raw.songList;
       if (Array.isArray(raw.archivedList)) s.archivedList = raw.archivedList;
       if (typeof raw.verify1RotationIndex === 'number') s.verify1RotationIndex = raw.verify1RotationIndex;
+      if (Array.isArray(raw.songListBackup)) s.songListBackup = raw.songListBackup;
       if (Array.isArray(raw.verify2List)) s.verify2List = raw.verify2List;
       if (Array.isArray(raw.verify2ArchivedList)) s.verify2ArchivedList = raw.verify2ArchivedList;
       if (typeof raw.verify2RotationIndex === 'number') s.verify2RotationIndex = raw.verify2RotationIndex;
+      if (Array.isArray(raw.verify2ListBackup)) s.verify2ListBackup = raw.verify2ListBackup;
     }
     return s;
   }
@@ -361,7 +365,8 @@
       addForm: document.getElementById(opts.elIds.addForm),
       addInput: document.getElementById(opts.elIds.addInput),
       listView: document.getElementById(opts.elIds.listView),
-      listCount: document.getElementById(opts.elIds.listCount)
+      listCount: document.getElementById(opts.elIds.listCount),
+      undoBtn: document.getElementById(opts.elIds.undoBtn)
     };
 
     function patternFor(index) {
@@ -416,10 +421,66 @@
         var pattern = patternFor(state[opts.rotationKey] + idx);
         var row = document.createElement('div');
         row.style.cssText = 'padding:0.4rem 0;border-bottom:1px solid var(--line);font-size:0.88rem;';
+
+        var topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex;align-items:center;gap:0.4rem;';
         var name = document.createElement('div');
-        name.style.fontWeight = idx === 0 ? '600' : '400';
+        name.style.cssText = 'flex:1;font-weight:' + (idx === 0 ? '600' : '400') + ';';
         name.textContent = (idx + 1) + '. ' + song.name;
-        row.appendChild(name);
+        topRow.appendChild(name);
+
+        var upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'btn btn-sub';
+        upBtn.style.cssText = 'margin:0;padding:0.2rem 0.5rem;';
+        upBtn.textContent = '↑';
+        upBtn.disabled = idx === 0;
+        upBtn.addEventListener('click', function () {
+          var tmp = list[idx - 1]; list[idx - 1] = list[idx]; list[idx] = tmp;
+          save(); renderToday();
+        });
+        topRow.appendChild(upBtn);
+
+        var downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'btn btn-sub';
+        downBtn.style.cssText = 'margin:0;padding:0.2rem 0.5rem;';
+        downBtn.textContent = '↓';
+        downBtn.disabled = idx === list.length - 1;
+        downBtn.addEventListener('click', function () {
+          var tmp = list[idx + 1]; list[idx + 1] = list[idx]; list[idx] = tmp;
+          save(); renderToday();
+        });
+        topRow.appendChild(downBtn);
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-sub';
+        delBtn.style.cssText = 'margin:0;padding:0.2rem 0.5rem;';
+        delBtn.textContent = '削除';
+        delBtn.addEventListener('click', function () {
+          list.splice(idx, 1);
+          state[opts.archiveKey].push(song);
+          save(); renderToday(); renderArchive();
+        });
+        topRow.appendChild(delBtn);
+
+        if (opts.backToKey) {
+          var backBtn = document.createElement('button');
+          backBtn.type = 'button';
+          backBtn.className = 'btn btn-sub';
+          backBtn.style.cssText = 'margin:0;padding:0.2rem 0.5rem;';
+          backBtn.textContent = opts.backToLabel || '戻す';
+          backBtn.addEventListener('click', function () {
+            list.splice(idx, 1);
+            state[opts.backToKey].push(song);
+            save(); renderToday();
+          });
+          topRow.appendChild(backBtn);
+        }
+
+        row.appendChild(topRow);
+
         var patternRow = document.createElement('div');
         patternRow.style.cssText = 'font-size:0.78rem;color:var(--ink-soft);';
         patternRow.textContent = PLATFORM_ORDER.map(function (p) {
@@ -459,6 +520,28 @@
           renderArchive();
         });
         row.appendChild(restoreBtn);
+
+        var delBtn = document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'btn btn-sub';
+        delBtn.style.margin = '0';
+        delBtn.textContent = '完全削除';
+        delBtn.dataset.step = '0';
+        var DELETE_STEPS = ['完全削除', '本当に消しますか？(もう一度)', '元に戻せません。最後にもう一度押すと削除'];
+        delBtn.addEventListener('click', function () {
+          var step = parseInt(delBtn.dataset.step, 10);
+          if (step < DELETE_STEPS.length - 1) {
+            step += 1;
+            delBtn.dataset.step = String(step);
+            delBtn.textContent = DELETE_STEPS[step];
+            return;
+          }
+          state[opts.archiveKey] = state[opts.archiveKey].filter(function (s) { return s !== song; });
+          save();
+          renderArchive();
+        });
+        row.appendChild(delBtn);
+
         els.archiveList.appendChild(row);
       });
     }
@@ -483,15 +566,33 @@
       renderToday();
     });
 
+    function renderUndoBtn() {
+      if (!els.undoBtn) return;
+      els.undoBtn.hidden = !state[opts.backupKey];
+    }
+
     els.loadBtn.addEventListener('click', function () {
       var raw = els.pasteTa.value;
       var lines = raw.split('\n').map(function (l) { return l.trim(); }).filter(Boolean);
       var parsed = lines.map(function (line) { return { name: line }; }).filter(function (s) { return s.name; });
+      state[opts.backupKey] = state[opts.listKey];
       state[opts.listKey] = parsed;
       save();
       els.pasteTa.value = '';
       renderToday();
+      renderUndoBtn();
     });
+
+    if (els.undoBtn) {
+      els.undoBtn.addEventListener('click', function () {
+        if (!state[opts.backupKey]) return;
+        state[opts.listKey] = state[opts.backupKey];
+        state[opts.backupKey] = null;
+        save();
+        renderToday();
+        renderUndoBtn();
+      });
+    }
 
     els.addForm.addEventListener('submit', function (e) {
       e.preventDefault();
@@ -505,6 +606,7 @@
 
     renderToday();
     renderArchive();
+    renderUndoBtn();
     return { renderToday: renderToday, renderArchive: renderArchive };
   }
 
@@ -684,24 +786,24 @@
   });
 
   createSongQueue({
-    listKey: 'songList', archiveKey: 'archivedList', rotationKey: 'verify1RotationIndex',
+    listKey: 'songList', archiveKey: 'archivedList', rotationKey: 'verify1RotationIndex', backupKey: 'songListBackup',
     rotationTable: VERIFY1_ROTATION,
     elIds: {
       count: 'song-list-count', display: 'today-song-display', nextBtn: 'next-song-btn', retireBtn: 'retire-song-btn',
       pasteTa: 'song-list-paste', loadBtn: 'song-list-load-btn', archiveCount: 'archive-count', archiveList: 'archive-list',
       addForm: 'song-add-form', addInput: 'song-add-input',
-      listView: 'song-list-view', listCount: 'song-list-view-count'
+      listView: 'song-list-view', listCount: 'song-list-view-count', undoBtn: 'song-list-undo-btn'
     }
   });
 
   createSongQueue({
-    listKey: 'verify2List', archiveKey: 'verify2ArchivedList', rotationKey: 'verify2RotationIndex',
-    rotationTable: VERIFY2_ROTATION,
+    listKey: 'verify2List', archiveKey: 'verify2ArchivedList', rotationKey: 'verify2RotationIndex', backupKey: 'verify2ListBackup',
+    rotationTable: VERIFY2_ROTATION, backToKey: 'songList', backToLabel: '検証①に戻す',
     elIds: {
       count: 'song-list-count-2', display: 'today-song-display-2', nextBtn: 'next-song-btn-2', retireBtn: 'retire-song-btn-2',
       pasteTa: 'song-list-paste-2', loadBtn: 'song-list-load-btn-2', archiveCount: 'archive-count-2', archiveList: 'archive-list-2',
       addForm: 'song-add-form-2', addInput: 'song-add-input-2',
-      listView: 'song-list-view-2', listCount: 'song-list-view-count-2'
+      listView: 'song-list-view-2', listCount: 'song-list-view-count-2', undoBtn: 'song-list-undo-btn-2'
     }
   });
 
